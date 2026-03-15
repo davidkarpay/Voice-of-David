@@ -1,0 +1,42 @@
+# Virtual environments
+TTS_venv/
+TTS_env/
+venv/
+.venv/
+kokoro_env/
+3d-chair-voice-studio/backend/venv/
+
+# Generated / temporary audio
+generated/
+kokoro_test.wav
+kokoro_longform_*.wav
+
+# Voice recordings and datasets (large binary files)
+*.wav
+dataset_40_items/
+dataset_expanded/
+voice_test_outputs/
+3d-chair-voice-studio/data/
+
+# Node modules
+node_modules/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+
+# OS files
+.DS_Store
+.DS_Store?
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# SQLite databases
+*.db

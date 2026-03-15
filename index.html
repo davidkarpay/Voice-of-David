@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kokoro TTS</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #1a1a2e;
+    color: #e0e0e0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 40px 20px;
+  }
+
+  .container {
+    max-width: 720px;
+    width: 100%;
+  }
+
+  h1 {
+    font-size: 28px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #fff;
+  }
+
+  .subtitle {
+    color: #888;
+    font-size: 14px;
+    margin-bottom: 32px;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 160px;
+    background: #16213e;
+    border: 1px solid #333;
+    border-radius: 8px;
+    color: #e0e0e0;
+    font-family: inherit;
+    font-size: 15px;
+    line-height: 1.6;
+    padding: 16px;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  textarea:focus { border-color: #4cc9f0; }
+  textarea::placeholder { color: #555; }
+
+  .controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+
+  select, button {
+    font-family: inherit;
+    font-size: 14px;
+    border-radius: 6px;
+    outline: none;
+  }
+
+  select {
+    background: #16213e;
+    border: 1px solid #333;
+    color: #e0e0e0;
+    padding: 10px 14px;
+    cursor: pointer;
+    min-width: 180px;
+  }
+
+  .speed-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #aaa;
+    font-size: 13px;
+  }
+  .speed-control input[type="range"] {
+    width: 100px;
+    accent-color: #4cc9f0;
+  }
+
+  .btn-generate {
+    background: #4cc9f0;
+    border: none;
+    color: #1a1a2e;
+    padding: 10px 28px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, opacity 0.2s;
+    margin-left: auto;
+  }
+  .btn-generate:hover { background: #7dd8f5; }
+  .btn-generate:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* Progress */
+  .progress-area {
+    margin-top: 24px;
+    display: none;
+  }
+  .progress-area.visible { display: block; }
+
+  .progress-bar-track {
+    background: #16213e;
+    border-radius: 4px;
+    height: 6px;
+    overflow: hidden;
+  }
+  .progress-bar-fill {
+    background: #4cc9f0;
+    height: 100%;
+    width: 0%;
+    transition: width 0.3s ease;
+    border-radius: 4px;
+  }
+  .progress-status {
+    margin-top: 8px;
+    font-size: 13px;
+    color: #888;
+  }
+  .progress-text {
+    margin-top: 4px;
+    font-size: 13px;
+    color: #555;
+    font-style: italic;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Player */
+  .player {
+    margin-top: 32px;
+    display: none;
+  }
+  .player.visible { display: block; }
+
+  .waveform-container {
+    position: relative;
+    cursor: pointer;
+    background: #16213e;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 120px;
+  }
+  .playhead {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 2px;
+    height: 100%;
+    background: #fff;
+    pointer-events: none;
+    transition: left 0.05s linear;
+  }
+
+  .player-controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-top: 12px;
+  }
+
+  .btn-play {
+    background: #4cc9f0;
+    border: none;
+    color: #1a1a2e;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+  .btn-play:hover { background: #7dd8f5; }
+
+  .time-display {
+    font-size: 14px;
+    color: #aaa;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .btn-download {
+    margin-left: auto;
+    background: none;
+    border: 1px solid #444;
+    color: #aaa;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  .btn-download:hover {
+    border-color: #4cc9f0;
+    color: #4cc9f0;
+  }
+
+  /* Transcript */
+  .transcript {
+    margin-top: 20px;
+    background: #16213e;
+    border-radius: 8px;
+    padding: 20px;
+    max-height: 300px;
+    overflow-y: auto;
+    line-height: 1.8;
+    font-size: 16px;
+    display: none;
+    scroll-behavior: smooth;
+  }
+  .transcript.visible { display: block; }
+
+  .transcript .word {
+    cursor: pointer;
+    padding: 2px 1px;
+    border-radius: 3px;
+    transition: background 0.15s, color 0.15s;
+  }
+  .transcript .word:hover {
+    background: rgba(76, 201, 240, 0.15);
+  }
+  .transcript .word.active {
+    background: #4cc9f0;
+    color: #1a1a2e;
+  }
+  .transcript .word.chunk-active {
+    color: #fff;
+  }
+  .transcript .chunk-break {
+    display: block;
+    height: 8px;
+  }
+
+  .error {
+    margin-top: 16px;
+    padding: 12px 16px;
+    background: #3a1a1a;
+    border: 1px solid #662222;
+    border-radius: 6px;
+    color: #ff6b6b;
+    font-size: 14px;
+    display: none;
+  }
+  .error.visible { display: block; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Kokoro TTS</h1>
+  <p class="subtitle">82M parameter model &middot; Apache 2.0 &middot; 24kHz output</p>
+
+  <textarea id="textInput" placeholder="Paste or type your text here..."></textarea>
+
+  <div class="controls">
+    <select id="voiceSelect"></select>
+    <div class="speed-control">
+      <label for="speedSlider">Speed</label>
+      <input type="range" id="speedSlider" min="0.5" max="2.0" step="0.1" value="1.0">
+      <span id="speedValue">1.0x</span>
+    </div>
+    <button class="btn-generate" id="generateBtn">Generate</button>
+  </div>
+
+  <div class="progress-area" id="progressArea">
+    <div class="progress-bar-track">
+      <div class="progress-bar-fill" id="progressFill"></div>
+    </div>
+    <div class="progress-status" id="progressStatus">Preparing...</div>
+    <div class="progress-text" id="progressText"></div>
+  </div>
+
+  <div class="error" id="errorBox"></div>
+
+  <div class="player" id="player">
+    <div class="waveform-container" id="waveformContainer">
+      <canvas id="waveformCanvas"></canvas>
+      <div class="playhead" id="playhead"></div>
+    </div>
+    <div class="player-controls">
+      <button class="btn-play" id="playBtn">&#9654;</button>
+      <span class="time-display" id="timeDisplay">0:00 / 0:00</span>
+      <button class="btn-download" id="downloadBtn">Download WAV</button>
+    </div>
+    <div class="transcript" id="transcript"></div>
+  </div>
+</div>
+
+<audio id="audioEl"></audio>
+
+<script>
+const textInput = document.getElementById('textInput');
+const voiceSelect = document.getElementById('voiceSelect');
+const speedSlider = document.getElementById('speedSlider');
+const speedValue = document.getElementById('speedValue');
+const generateBtn = document.getElementById('generateBtn');
+const progressArea = document.getElementById('progressArea');
+const progressFill = document.getElementById('progressFill');
+const progressStatus = document.getElementById('progressStatus');
+const progressText = document.getElementById('progressText');
+const errorBox = document.getElementById('errorBox');
+const player = document.getElementById('player');
+const waveformCanvas = document.getElementById('waveformCanvas');
+const waveformContainer = document.getElementById('waveformContainer');
+const playhead = document.getElementById('playhead');
+const playBtn = document.getElementById('playBtn');
+const timeDisplay = document.getElementById('timeDisplay');
+const downloadBtn = document.getElementById('downloadBtn');
+const audioEl = document.getElementById('audioEl');
+const transcript = document.getElementById('transcript');
+
+let audioCtx = null;
+let audioBuffer = null;
+let animFrame = null;
+let currentWavUrl = null;
+let wordElements = [];   // flat array of {el, start, end} for all words
+let lastActiveWord = null;
+
+// Load voices
+fetch('/api/voices')
+  .then(r => r.json())
+  .then(voices => {
+    voices.forEach(v => {
+      const opt = document.createElement('option');
+      opt.value = v.id;
+      opt.textContent = v.name;
+      voiceSelect.appendChild(opt);
+    });
+  });
+
+// Speed slider
+speedSlider.addEventListener('input', () => {
+  speedValue.textContent = parseFloat(speedSlider.value).toFixed(1) + 'x';
+});
+
+// Format time as m:ss
+function fmt(sec) {
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return m + ':' + String(s).padStart(2, '0');
+}
+
+// Generate
+generateBtn.addEventListener('click', () => {
+  const text = textInput.value.trim();
+  if (!text) { textInput.focus(); return; }
+
+  generateBtn.disabled = true;
+  errorBox.classList.remove('visible');
+  player.classList.remove('visible');
+  progressArea.classList.add('visible');
+  progressFill.style.width = '0%';
+  progressStatus.textContent = 'Preparing...';
+  progressText.textContent = '';
+
+  // Stop any playing audio
+  audioEl.pause();
+  audioEl.currentTime = 0;
+  cancelAnimationFrame(animFrame);
+
+  const params = new URLSearchParams({
+    text,
+    voice: voiceSelect.value,
+    speed: speedSlider.value,
+  });
+
+  const es = new EventSource('/api/generate?' + params.toString());
+
+  es.addEventListener('info', (e) => {
+    const d = JSON.parse(e.data);
+    progressStatus.textContent = `Generating 0 of ${d.total_chunks} chunks...`;
+  });
+
+  es.addEventListener('progress', (e) => {
+    const d = JSON.parse(e.data);
+    const pct = (d.chunk / d.total) * 100;
+    progressFill.style.width = pct + '%';
+    progressStatus.textContent = `Generating chunk ${d.chunk} of ${d.total}...`;
+    progressText.textContent = d.text;
+  });
+
+  es.addEventListener('complete', (e) => {
+    const d = JSON.parse(e.data);
+    es.close();
+    progressFill.style.width = '100%';
+    progressStatus.textContent = `Done — ${d.duration}s of audio`;
+    generateBtn.disabled = false;
+
+    currentWavUrl = d.url;
+    buildTranscript(d.chunks);
+    loadAudio(d.url);
+  });
+
+  es.addEventListener('error', (e) => {
+    // Check if it's an SSE error event with data
+    if (e.data) {
+      const d = JSON.parse(e.data);
+      errorBox.textContent = d.message;
+    } else {
+      errorBox.textContent = 'Connection lost during generation.';
+    }
+    errorBox.classList.add('visible');
+    progressArea.classList.remove('visible');
+    generateBtn.disabled = false;
+    es.close();
+  });
+});
+
+// Estimate syllable count for a word (vowel-group counting)
+// Syllables correlate much better with spoken duration than character count
+function syllables(word) {
+  const clean = word.toLowerCase().replace(/[^a-z]/g, '');
+  if (!clean) return 1;
+  const groups = clean.match(/[aeiouy]+/g);
+  let count = groups ? groups.length : 1;
+  // Silent e at end of word
+  if (clean.endsWith('e') && count > 1) count--;
+  // "le" at end counts as a syllable (e.g. "table")
+  if (clean.match(/[^aeiouy]le$/)) count++;
+  return Math.max(1, count);
+}
+
+// Build clickable transcript from chunk timing data
+function buildTranscript(chunks) {
+  transcript.innerHTML = '';
+  wordElements = [];
+  lastActiveWord = null;
+
+  chunks.forEach((chunk, ci) => {
+    const words = chunk.text.split(/(\s+)/); // keep whitespace as separators
+    const nonSpaceWords = words.filter(w => w.trim().length > 0);
+    const chunkDuration = chunk.end - chunk.start;
+
+    // Estimate word timing proportionally by syllable count
+    const totalSyllables = nonSpaceWords.reduce((s, w) => s + syllables(w), 0);
+    let syllableOffset = 0;
+
+    words.forEach(token => {
+      if (token.trim().length === 0) {
+        transcript.appendChild(document.createTextNode(token));
+        return;
+      }
+
+      const wordSyllables = syllables(token);
+      const wordStart = chunk.start + (syllableOffset / totalSyllables) * chunkDuration;
+      const wordEnd = chunk.start + ((syllableOffset + wordSyllables) / totalSyllables) * chunkDuration;
+      syllableOffset += wordSyllables;
+
+      const span = document.createElement('span');
+      span.className = 'word';
+      span.textContent = token;
+      span.dataset.start = wordStart;
+      span.dataset.end = wordEnd;
+
+      span.addEventListener('click', () => {
+        audioEl.currentTime = wordStart;
+        const pct = wordStart / audioEl.duration;
+        playhead.style.left = (pct * waveformContainer.offsetWidth) + 'px';
+        timeDisplay.textContent = `${fmt(wordStart)} / ${fmt(audioEl.duration)}`;
+        if (audioEl.paused) {
+          audioEl.play();
+          playBtn.innerHTML = '&#9646;&#9646;';
+          updatePlayhead();
+        }
+      });
+
+      transcript.appendChild(span);
+      wordElements.push({ el: span, start: wordStart, end: wordEnd });
+    });
+
+    if (ci < chunks.length - 1) {
+      transcript.appendChild(document.createTextNode(' '));
+    }
+  });
+
+  transcript.classList.add('visible');
+}
+
+// Load audio and draw waveform
+async function loadAudio(url) {
+  audioEl.src = url;
+  downloadBtn.onclick = () => {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = url.split('/').pop();
+    a.click();
+  };
+
+  // Decode for waveform
+  if (!audioCtx) audioCtx = new AudioContext();
+  const resp = await fetch(url);
+  const buf = await resp.arrayBuffer();
+  audioBuffer = await audioCtx.decodeAudioData(buf);
+
+  drawWaveform();
+  player.classList.add('visible');
+  timeDisplay.textContent = `0:00 / ${fmt(audioBuffer.duration)}`;
+}
+
+// Draw waveform on canvas
+function drawWaveform() {
+  const dpr = window.devicePixelRatio || 1;
+  const rect = waveformCanvas.getBoundingClientRect();
+  waveformCanvas.width = rect.width * dpr;
+  waveformCanvas.height = rect.height * dpr;
+
+  const ctx = waveformCanvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const w = rect.width;
+  const h = rect.height;
+  const data = audioBuffer.getChannelData(0);
+  const bars = Math.floor(w / 3); // 3px per bar (2px bar + 1px gap)
+  const samplesPerBar = Math.floor(data.length / bars);
+  const mid = h / 2;
+
+  ctx.clearRect(0, 0, w, h);
+
+  for (let i = 0; i < bars; i++) {
+    let max = 0;
+    const start = i * samplesPerBar;
+    for (let j = start; j < start + samplesPerBar && j < data.length; j++) {
+      const abs = Math.abs(data[j]);
+      if (abs > max) max = abs;
+    }
+    const barH = max * mid * 0.9;
+    const x = i * 3;
+
+    ctx.fillStyle = '#4cc9f0';
+    ctx.fillRect(x, mid - barH, 2, barH * 2);
+  }
+}
+
+// Playback controls
+playBtn.addEventListener('click', () => {
+  if (audioEl.paused) {
+    audioEl.play();
+    playBtn.innerHTML = '&#9646;&#9646;';
+    updatePlayhead();
+  } else {
+    audioEl.pause();
+    playBtn.innerHTML = '&#9654;';
+    cancelAnimationFrame(animFrame);
+  }
+});
+
+audioEl.addEventListener('ended', () => {
+  playBtn.innerHTML = '&#9654;';
+  playhead.style.left = '0px';
+  cancelAnimationFrame(animFrame);
+});
+
+function updatePlayhead() {
+  if (audioEl.paused) return;
+  const t = audioEl.currentTime;
+  const pct = t / audioEl.duration;
+  playhead.style.left = (pct * waveformContainer.offsetWidth) + 'px';
+  timeDisplay.textContent = `${fmt(t)} / ${fmt(audioEl.duration)}`;
+
+  // Highlight current word in transcript
+  highlightWordAt(t);
+
+  animFrame = requestAnimationFrame(updatePlayhead);
+}
+
+function highlightWordAt(t) {
+  // Binary search for the active word
+  let lo = 0, hi = wordElements.length - 1, found = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (wordElements[mid].start <= t) {
+      found = mid;
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
+  }
+
+  if (found >= 0 && found !== lastActiveWord) {
+    if (lastActiveWord !== null && wordElements[lastActiveWord]) {
+      wordElements[lastActiveWord].el.classList.remove('active');
+    }
+    wordElements[found].el.classList.add('active');
+    lastActiveWord = found;
+
+    // Auto-scroll transcript to keep active word visible
+    const el = wordElements[found].el;
+    const container = transcript;
+    const elTop = el.offsetTop - container.offsetTop;
+    const scrollTop = container.scrollTop;
+    const containerH = container.clientHeight;
+    if (elTop < scrollTop + 40 || elTop > scrollTop + containerH - 40) {
+      container.scrollTop = elTop - containerH / 3;
+    }
+  }
+}
+
+// Seek by clicking waveform
+waveformContainer.addEventListener('click', (e) => {
+  if (!audioEl.src) return;
+  const rect = waveformContainer.getBoundingClientRect();
+  const pct = (e.clientX - rect.left) / rect.width;
+  audioEl.currentTime = pct * audioEl.duration;
+  playhead.style.left = (pct * waveformContainer.offsetWidth) + 'px';
+  timeDisplay.textContent = `${fmt(audioEl.currentTime)} / ${fmt(audioEl.duration)}`;
+});
+
+// Redraw waveform on resize
+window.addEventListener('resize', () => {
+  if (audioBuffer) drawWaveform();
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+  // Space to play/pause (when not typing in textarea)
+  if (e.code === 'Space' && e.target !== textInput) {
+    e.preventDefault();
+    playBtn.click();
+  }
+});
+</script>
+</body>
+</html>
