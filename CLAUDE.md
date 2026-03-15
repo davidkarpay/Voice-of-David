@@ -8,6 +8,17 @@
 - Voices in use: `af_heart`, `af_nova`, `bm_george`
 - Start: `source kokoro_env/bin/activate && python server.py`
 
+## 3D Chair Voice Studio (David's Voice)
+- Path: `3d-chair-voice-studio/`
+- Backend: FastAPI on port 8001, venv at `3d-chair-voice-studio/backend/venv/`
+- Frontend: React/TypeScript/Vite on port 5173+
+- Database: SQLite at `3d-chair-voice-studio/data/voice_studio.db`
+- Recordings: `3d-chair-voice-studio/data/recordings/`
+- Requires: ffmpeg (for webm->WAV conversion), optional ANTHROPIC_API_KEY for prompt generation
+- Start backend: `cd 3d-chair-voice-studio/backend && source venv/bin/activate && python main.py`
+- Start frontend: `cd 3d-chair-voice-studio/frontend && npm run dev`
+- Note: Kokoro TTS occupies port 8000, so voice studio uses port 8001
+
 ## XTTS Voice Cloning
 - Finetuned models on NAS: `/Volumes/david/TTS_models/`
 - Original venvs (TTS_venv, TTS_env) were deleted during disk cleanup 2026-03-11

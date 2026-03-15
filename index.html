@@ -406,7 +406,7 @@ generateBtn.addEventListener('click', () => {
     generateBtn.disabled = false;
 
     currentWavUrl = d.url;
-    buildTranscript(d.chunks);
+    buildTranscript(d.words);
     loadAudio(d.url);
   });
 
@@ -425,71 +425,40 @@ generateBtn.addEventListener('click', () => {
   });
 });
 
-// Estimate syllable count for a word (vowel-group counting)
-// Syllables correlate much better with spoken duration than character count
-function syllables(word) {
-  const clean = word.toLowerCase().replace(/[^a-z]/g, '');
-  if (!clean) return 1;
-  const groups = clean.match(/[aeiouy]+/g);
-  let count = groups ? groups.length : 1;
-  // Silent e at end of word
-  if (clean.endsWith('e') && count > 1) count--;
-  // "le" at end counts as a syllable (e.g. "table")
-  if (clean.match(/[^aeiouy]le$/)) count++;
-  return Math.max(1, count);
-}
-
-// Build clickable transcript from chunk timing data
-function buildTranscript(chunks) {
+// Build clickable transcript from forced-alignment word timestamps
+function buildTranscript(words) {
   transcript.innerHTML = '';
   wordElements = [];
   lastActiveWord = null;
 
-  chunks.forEach((chunk, ci) => {
-    const words = chunk.text.split(/(\s+)/); // keep whitespace as separators
-    const nonSpaceWords = words.filter(w => w.trim().length > 0);
-    const chunkDuration = chunk.end - chunk.start;
+  if (!words || !words.length) return;
 
-    // Estimate word timing proportionally by syllable count
-    const totalSyllables = nonSpaceWords.reduce((s, w) => s + syllables(w), 0);
-    let syllableOffset = 0;
+  words.forEach((w, i) => {
+    const span = document.createElement('span');
+    span.className = 'word';
+    span.textContent = w.word;
+    span.dataset.start = w.start;
+    span.dataset.end = w.end;
 
-    words.forEach(token => {
-      if (token.trim().length === 0) {
-        transcript.appendChild(document.createTextNode(token));
-        return;
+    span.addEventListener('click', () => {
+      audioEl.currentTime = w.start;
+      const pct = w.start / audioEl.duration;
+      playhead.style.left = (pct * waveformContainer.offsetWidth) + 'px';
+      timeDisplay.textContent = `${fmt(w.start)} / ${fmt(audioEl.duration)}`;
+      if (audioEl.paused) {
+        audioEl.play();
+        playBtn.innerHTML = '&#9646;&#9646;';
+        updatePlayhead();
       }
-
-      const wordSyllables = syllables(token);
-      const wordStart = chunk.start + (syllableOffset / totalSyllables) * chunkDuration;
-      const wordEnd = chunk.start + ((syllableOffset + wordSyllables) / totalSyllables) * chunkDuration;
-      syllableOffset += wordSyllables;
-
-      const span = document.createElement('span');
-      span.className = 'word';
-      span.textContent = token;
-      span.dataset.start = wordStart;
-      span.dataset.end = wordEnd;
-
-      span.addEventListener('click', () => {
-        audioEl.currentTime = wordStart;
-        const pct = wordStart / audioEl.duration;
-        playhead.style.left = (pct * waveformContainer.offsetWidth) + 'px';
-        timeDisplay.textContent = `${fmt(wordStart)} / ${fmt(audioEl.duration)}`;
-        if (audioEl.paused) {
-          audioEl.play();
-          playBtn.innerHTML = '&#9646;&#9646;';
-          updatePlayhead();
-        }
-      });
-
-      transcript.appendChild(span);
-      wordElements.push({ el: span, start: wordStart, end: wordEnd });
     });
 
-    if (ci < chunks.length - 1) {
+    transcript.appendChild(span);
+    // Add space between words
+    if (i < words.length - 1) {
       transcript.appendChild(document.createTextNode(' '));
     }
+
+    wordElements.push({ el: span, start: w.start, end: w.end });
   });
 
   transcript.classList.add('visible');
