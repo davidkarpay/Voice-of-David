@@ -3,7 +3,7 @@
 ## Kokoro TTS Web UI
 - Backend: `server.py` (FastAPI, port 8000)
 - Frontend: `index.html` (vanilla JS, no build step)
-- Venv: `kokoro_env/` (Python 3.12, includes kokoro, torch, fastapi, uvicorn)
+- Venv: `kokoro_env/` (Python 3.12, includes kokoro, torch, torchaudio, fastapi, uvicorn)
 - System dep: `espeak-ng` (Homebrew)
 - Voices in use: `af_heart`, `af_nova`, `bm_george`
 - Start: `source kokoro_env/bin/activate && python server.py`
@@ -26,4 +26,7 @@
 
 ## Known Issues
 - Kokoro question intonation is flat for English (model limitation, not fixable via config)
-- Word transcript highlighting uses syllable estimation, not exact alignment
+
+## Design Decisions
+- Word transcript uses torchaudio wav2vec2 forced alignment for exact word timestamps
+- Deleting a recording reverses all side effects (session count, phoneme coverage, prompt re-queued)

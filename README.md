@@ -28,16 +28,15 @@ python server.py
 **Dependencies:**
 - Python 3.12+ with venv at `kokoro_env/`
 - System: `espeak-ng` (via Homebrew)
-- Python: `kokoro`, `torch`, `fastapi`, `uvicorn`, `soundfile`, `numpy`
+- Python: `kokoro`, `torch`, `torchaudio`, `fastapi`, `uvicorn`, `soundfile`, `numpy`
 
 **Architecture:**
-- `server.py` — FastAPI backend. Loads Kokoro pipeline once at startup, serves SSE generation endpoint with chunk-level progress and word timing data.
-- `index.html` — Vanilla JS/CSS frontend. Canvas waveform, synchronized transcript with syllable-based word timing estimation, keyboard shortcuts (Space = play/pause).
+- `server.py` — FastAPI backend. Loads Kokoro pipeline and wav2vec2 alignment model at startup. SSE generation endpoint with chunk-level progress and forced-alignment word timestamps.
+- `index.html` — Vanilla JS/CSS frontend. Canvas waveform, synchronized transcript with exact word-level highlighting (via torchaudio forced alignment), keyboard shortcuts (Space = play/pause).
 - `generated/` — Temporary WAV output directory (auto-cleaned on startup, files >1hr deleted).
 
 **Known Limitations:**
 - Question intonation is flat (model-level limitation for English; rising intonation tokens exist but English G2P never generates them). Acceptable for long-form content.
-- Word highlighting uses syllable-count estimation within chunks, not exact forced alignment.
 
 ### XTTS Voice Cloning (Legacy)
 
@@ -49,7 +48,7 @@ Fine-tuned XTTS v2 model trained on David's voice recordings.
 - **Voice studio**: `3d-chair-voice-studio/` (React + FastAPI recording UI)
 - **Comparison tools**: `compare_models.py`, `test_multireference.py`
 
-See `RECORDING_QUICK_START.md` and `recording_plan.md` for the voice recording workflow.
+See `recording_plan.md` for the voice recording workflow.
 
 ## Project Structure
 
@@ -72,4 +71,4 @@ See `RECORDING_QUICK_START.md` and `recording_plan.md` for the voice recording w
 
 ## Last Updated
 
-2026-03-15
+2026-03-19
