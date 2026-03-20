@@ -18,6 +18,9 @@ dataset_expanded/
 voice_test_outputs/
 3d-chair-voice-studio/data/
 
+# Build output
+3d-chair-voice-studio/frontend/dist/
+
 # Node modules
 node_modules/
 

@@ -321,9 +321,44 @@ async def batch_review(update: BatchReviewUpdate):
         await db.close()
 
 
+async def _undo_recording_side_effects(db: aiosqlite.Connection, row):
+    """Reverse the side effects of a recording upload.
+
+    When a recording is deleted, this restores the system state as if
+    the recording had never been made: decrements session count, updates
+    phoneme coverage, and returns the prompt text to the available pool.
+
+    Args:
+        db: Active database connection (caller manages commit)
+        row: The full recording row being deleted
+    """
+    # Decrement session completed_count
+    if row["session_id"]:
+        await db.execute(
+            "UPDATE sessions SET completed_count = MAX(0, completed_count - 1) WHERE id = ?",
+            (row["session_id"],),
+        )
+
+    # Update phoneme coverage: decrement counts, remove recording from tracking
+    phonemes = text_to_phonemes(row["text"])
+    for phoneme in phonemes:
+        await db.execute(
+            """UPDATE phoneme_coverage
+               SET occurrence_count = MAX(0, occurrence_count - 1)
+               WHERE phoneme = ?""",
+            (phoneme,),
+        )
+
+    # Return the prompt text to the available pool so it can be re-recorded
+    await db.execute(
+        "INSERT INTO prompt_cache (text, category, used) VALUES (?, ?, 0)",
+        (row["text"], row["category"] or "phonetic"),
+    )
+
+
 @router.post("/batch-delete")
 async def batch_delete(request: BatchDelete):
-    """Delete multiple recordings and their audio files."""
+    """Delete multiple recordings, their audio files, and reverse side effects."""
     if not request.recording_ids:
         raise HTTPException(status_code=400, detail="No recording IDs provided")
 
@@ -331,7 +366,7 @@ async def batch_delete(request: BatchDelete):
     try:
         placeholders = ",".join(["?"] * len(request.recording_ids))
         cursor = await db.execute(
-            f"SELECT id, filename FROM recordings WHERE id IN ({placeholders})",
+            f"SELECT * FROM recordings WHERE id IN ({placeholders})",
             request.recording_ids,
         )
         rows = await cursor.fetchall()
@@ -340,6 +375,7 @@ async def batch_delete(request: BatchDelete):
             file_path = RECORDINGS_DIR / r["filename"]
             if file_path.exists():
                 file_path.unlink()
+            await _undo_recording_side_effects(db, r)
 
         await db.execute(
             f"DELETE FROM recordings WHERE id IN ({placeholders})",
@@ -353,10 +389,10 @@ async def batch_delete(request: BatchDelete):
 
 @router.delete("/{recording_id}")
 async def delete_recording(recording_id: int):
-    """Delete a recording and its audio file."""
+    """Delete a recording, its audio file, and reverse side effects."""
     db = await get_db()
     try:
-        cursor = await db.execute("SELECT filename FROM recordings WHERE id = ?", (recording_id,))
+        cursor = await db.execute("SELECT * FROM recordings WHERE id = ?", (recording_id,))
         row = await cursor.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Recording not found")
@@ -365,6 +401,7 @@ async def delete_recording(recording_id: int):
         if file_path.exists():
             file_path.unlink()
 
+        await _undo_recording_side_effects(db, row)
         await db.execute("DELETE FROM recordings WHERE id = ?", (recording_id,))
         await db.commit()
         return {"status": "deleted", "id": recording_id}
