@@ -50,6 +50,16 @@ Fine-tuned XTTS v2 model trained on David's voice recordings.
 
 See `recording_plan.md` for the voice recording workflow.
 
+## Testing
+
+```bash
+cd ~/Desktop/TTS/3d-chair-voice-studio/backend
+source venv/bin/activate
+python -m pytest tests/ -v
+```
+
+Tests cover recording deletion side-effect reversal (session counts, phoneme coverage, prompt re-queuing) and endpoint edge cases.
+
 ## Project Structure
 
 ```

@@ -24,6 +24,11 @@
 - Original venvs (TTS_venv, TTS_env) were deleted during disk cleanup 2026-03-11
 - To use XTTS again, install Idiap fork: `pip install coqui-tts`
 
+## Testing
+- Voice studio backend: `cd 3d-chair-voice-studio/backend && source venv/bin/activate && python -m pytest tests/ -v`
+- Tests use in-memory SQLite and temp dirs (no production data touched)
+- Test deps: pytest, pytest-asyncio (installed in voice studio venv)
+
 ## Known Issues
 - Kokoro question intonation is flat for English (model limitation, not fixable via config)
 
